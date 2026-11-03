@@ -161,31 +161,74 @@ template myself and found no AI policy stated either way.
 
 **Environment Setup**
 
-[What a stranger would need to stand this up: your operating system,
-the relevant versions (language, runtime, package manager, the project
-itself), and how you set the project up. Then the challenges you faced
-and how you solved them, or that none came up.]
+Windows 11 (10.0.26200), Python 3.14.6. Forked `wehnsdaefflae/llmsectest` to
+`adedotdev/llmsectest` and cloned it, then ran `pip install -e ".[dev,cvss]"` from the
+clone root per CONTRIBUTING.md, which installed `llmsectest==0.4.1` editable. No
+environment challenges came up. The issue itself names no environment to reconcile
+against — it's a claim about probe/scoring design, not a platform-specific bug.
 
 **Steps to Reproduce**
 
-1. [Step 1]
-2. [Step 2]
-3. [Observed result]
+The issue's own "where to look" pointer (`probes/corpus.py`) turned out to be wrong —
+that file only documents LLM08 as app-only and ships no LLM08 cases. The real case
+builder is `_llm08_cases()` in `src/llmsectest/probes/application.py`. More importantly,
+the "poisoned document" the issue describes isn't a fixture in this repo at all: per
+`docs/owasp/llm08.md`, it's something a person testing their own RAG app plants
+themselves, and the masking claim traces back to the maintainer's own private
+measurement over 16 real applications, not to anything this repo ships. So reproducing
+it means reproducing it the way the existing regression suite already does:
+
+1. From the clone root, with the editable install in place, write a script using the
+   same mock-adapter pattern `tests/test_confounded_retrieval_probes.py` already uses
+   (`_AnsweringAdapter`, a fake RAG app that always answers with one fixed reply).
+2. Build a `retrieval_exposure` case (the canary probe, with `confounded_by` set to the
+   poison marker, exactly as `_llm08_cases` builds it) and an `injection_marker` case
+   (the poisoned-document probe), for the same mock app.
+3. Run both through `run_probe` against an adapter whose fixed reply is the poison
+   marker, standing in for a poisoned document that always answers every query with its
+   own marker and nothing else.
+4. Observed result: the canary probe comes back inconclusive (`errored: True`, never a
+   genuine finding either way), the injection probe comes back `vulnerable: True` — in
+   the same run, against the same app, from the same single reply. That is the issue's
+   claim: only one of the two LLM08 dimensions can ever fire in a single run.
 
 **Reproduction Evidence**
 
-- **Commit showing reproduction:** [link to commit in your fork]
-- **Screenshots/logs:** [if applicable]
-- **My findings:** [what you discovered during reproduction; an
-  honest, evidenced cannot-reproduce that led you to re-pick or ask
-  the maintainer belongs here and costs you nothing]
+- **Commit showing reproduction:** none — the script is local evidence only; no fix has
+  been built yet, this is the reproduction step
+- **Screenshots/logs:**
+
+  ```
+  canary probe    -> vulnerable: False | errored: True | evidence: probe not scored, the reply carries a competing planted marker (RAG-POISON-3b9d) rather than the canary this probe asks about: a poisoned retrieved document answered in the canary's place, so retrieval isolation is neither confirmed nor refuted
+  injection probe -> vulnerable: True | errored: False
+  ```
+
+- **My findings:** The symptom reproduces, but not via the issue's own stated file
+  pointer, and not via any fixture shipped in this repo. Issue #12's earlier fix already
+  stops the canary probe from reading as a false `withstood` — it reads inconclusive
+  instead, via `confounded_by` — but that fix never let retrieval exposure actually fire
+  in the same run it's confounded in; it can only ever be confounded or (separately,
+  against a differently-behaved app) pass. `docs/owasp/llm08.md`'s own measurement (13 of
+  16 real apps obeyed the poison fully; only one ever showed the retrieval dimension
+  alone) backs the same conclusion from live data that this script reaches from a mock
+  in under a second. The bug is real, and it's in the probe/fixture design the issue's
+  three routes address, not in the scoring logic, which already does what it can with
+  what it's handed.
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: Claude Code, used to read `application.py`, `detectors.py`, the LLM08 test
+  suite, and `docs/owasp/llm08.md`, and to write the reproduction script; repro-check
+  (my rubric) to grade the claim comment and this report before treating either as done
+- What it produced: an accept verdict on all 5 required checks (environment,
+  steps-followable, behavior-matches, honesty, conventions-disclosure), and the finding
+  above that the issue's own file pointer was wrong
+- Difficulties: the issue's stated evidence location (`probes/corpus.py`) doesn't
+  contain what it says it does, and the actual poisoned-document fixture isn't in the
+  repo at all — both took direct reading of the source and docs to catch, not something
+  a rubric check alone would have caught
+- What changed: nothing in the skill; the value was in not trusting the issue's pointer
+  and verifying the real code location myself
 
 ---
 
