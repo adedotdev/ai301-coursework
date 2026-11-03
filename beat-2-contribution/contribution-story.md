@@ -1,4 +1,4 @@
-# Contribution: [Issue Title]
+# Contribution: A poisoned document masks the retrieval-exposure leak, so two LLM08 dimensions never co-fire
 
 Path: `beat-2-contribution/contribution-story.md`
 
@@ -8,10 +8,9 @@ format criteria grade exactly that. Your course repo link is the whole submissio
 files and no evidence uploads are part of Assignment 5.
 
 **Contribution Number:** [1]
-**Student:** [Student name]
-**GitHub Username:** [your GitHub username, exactly as it appears on your profile - no @, no
-profile URL. Your comments upstream are identified by this name.]
-**Issue:** [GitHub issue link]
+**Student:** Dami Adenuga
+**GitHub Username:** adedotdev
+**Issue:** https://github.com/wehnsdaefflae/llmsectest/issues/38
 **Pull Request:** [GitHub PR link, once opened]
 
 One repository, built across units 5 to 8, telling the whole story of your real
@@ -59,11 +58,21 @@ one in the week it belongs to.
 
 I turned the unit-1 rubric into issue-scout: two `gh search issues` queries traced to my fit profile (RAG/retrieval/agentic in Python, Spring Boot in Java), ranking filters that drop assigned or stale results and order survivors by comment count, and a rubric that grades the top 5. Two things fell short on the first run: the scout's own subprocess couldn't call `gh` at all (every call got denied for approval), so I ran the searches myself and fed it the results; and the comment-count ranking had no tie-break, so most of the top 5 was arbitrary since nearly everything sat at 0 comments. I fixed the tie-break (most recent first) and found a real rubric gap while grading: a genuinely well-specified issue (`railtracks#1757`) still shouldn't have been accepted, because its own text said to wait for a prerequisite PR that's still open, and none of my five checks caught that. I added a clause for it. The same rubric then correctly rejected both of my own hand-picked issues from the Issue Selection site, each for a currently active competing PR my own read of the issue page would have missed.
 
-**Unit 6: [one line on the tool work]**
+**Unit 6: Installed a voice guard that caught a real rule gap, then hit a tool wall writing the fix**
 
-[2-4 sentences: the voice-guard, the repo-memory file. What broke or
-fell short, and what changed because of it. "Nothing broke" counts when
-it is true - say how you know.]
+I installed the voice-guard hook (a `PreToolUse` check that holds every outgoing `gh issue/pr
+comment/create` body against my own voice-guide before it posts) and patched the scout's
+rubric so an open design edge is a difficulty note, not a hard reject. Using the guard for
+real surfaced a gap: my first claim-comment draft tripped the "one question, with what I
+already tried" rule, because it asked a pre-work design question with nothing "tried" yet.
+The content was fine; the rule was too narrow. Fixing it meant editing my own voice-guide.md,
+which Claude Code's self-modification safety check blocks outright, tool-agnostic — I hit the
+identical denial through three different tools. I made the edit myself by hand instead, widened
+the rule to "grounded in what I already know" (issue text counts, not just things tried), and
+the redraft passed. A second, unrelated wall showed up posting the claim itself: running `gh`
+through a permission-bypassed subprocess tripped a different safety block
+(`[Create Unsafe Agents]`), so I posted the verified comment from my own interactive session
+instead of automating around it.
 
 **Unit 7: [one line on the tool work]**
 
@@ -79,24 +88,45 @@ drafted, what you did with the draft.]
 
 ## Why I Chose This Issue
 
-[1-2 paragraphs in your own words: how you searched, what your scan
-surfaced, what your scout's verdict said, why this issue fits your
-profile, and what you hope to learn. If your scout's verdict on it
-was reject and you chose it anyway, say so here and say why; choosing
-against your own tool silently is what loses points. Close with an
-honest read of the tool itself: where the scout fell short on a real
-wild search and what you changed or would change, or what convinced
-you it held up. **Record the link to your claim comment in this section too.**
-Not claimed yet? Write `claim pending` and today's date where the link goes,
-and add the link the moment your claim lands.]
+This issue came from my own scan, not the official Issue Selection site. I ran both
+search-strategy queries (RAG/retrieval/agentic in Python, Spring in Java), combined 200
+unique results, ranked them with the strategy's filters, and graded the top 5 with
+issue-scout. Four of the five were accepted: `llmsectest#38`, `talentcatalog#3961`, and the
+two `lasagna` benchmark-adapter issues (`#3`, `#4`); only `railtracks#1757` was rejected, and
+only live-checking a linked PR caught why — its own text looked perfectly startable, but it
+names a prerequisite PR that is still open. Among the four accepted, I picked `llmsectest#38`
+over the easier, lower-depth `talentcatalog` dependency removal and the two paper-reproduction
+`lasagna` adapters, because it is squarely in my fit profile (Python, and the kind of
+unfamiliar-codebase reading I'm trying to get better at) and because it carries a difficulty
+note of "ambitious": the issue itself names three candidate fix routes and asks the PR to
+justify which one it took, which is an open design choice rather than a bounded single edit,
+and that's exactly the kind of practice I want. I hope to learn how a security-test project
+plants and verifies ground truth, which the issue itself calls out as the thing that makes its
+findings checkable. My claim comment is posted at
+https://github.com/wehnsdaefflae/llmsectest/issues/38#issuecomment-6609479931.
+
+Reading the scout's grade against the actual issue held up well: the "ambitious" note was
+accurate, and the earlier rubric patch (scope stops hard-rejecting on an open design edge, and
+only flags it as a difficulty note) is why this issue was accepted at all instead of bounced
+for not naming one fix. The scan also proved its worth on `railtracks#1757`: the raw search
+fields ranked it #1 of 5, and nothing about its own text reads as blocked, but checking the
+linked PR's live state caught a prerequisite the plain issue page would have missed. The one
+place the scout couldn't help me was the thing it explicitly isn't built to check: whether the
+repo accepts AI-assisted contributions. I read CONTRIBUTING.md, the README, and the PR
+template myself and found no AI policy stated either way.
 
 **Toolkit**
 
-- Tool: issue-scout (your scout: your search strategy, your rubric),
-  and how you used it
-- What it produced: [the scan and its verdict on this issue, described]
-- Difficulties: [where it fell short, or "none met" if none did]
-- What changed: [what you patched or would update, or "nothing"]
+- Tool: issue-scout (my search strategy + my patched rubric), run in direct mode against the
+  5 ranked candidates from my scan
+- What it produced: accept verdicts on 4 of 5 (`llmsectest#38`, `talentcatalog#3961`,
+  `lasagna#3`, `lasagna#4`), with `llmsectest#38` carrying a difficulty note of "ambitious"
+  (open design choice among three named routes), and one reject (`railtracks#1757`, blocked
+  on an unmerged prerequisite PR caught only by checking it live)
+- Difficulties: none met this time; the scope-feasible patch from earlier this unit worked as
+  intended on a real ambitious issue
+- What changed: nothing in the scout itself this round; the value was in the patch I'd
+  already made
 
 ---
 
