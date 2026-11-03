@@ -55,10 +55,9 @@ happened; these entries are the toolkit's own timeline.
 All four entries are graded. Keep every heading below, and fill each
 one in the week it belongs to.
 
-**Unit 5: [one line on the tool work]**
+**Unit 5: Built the scout, and it caught a blocker my own reading missed**
 
-[2-4 sentences: what you built (the scout, your strategy), what broke
-or fell short, what changed because of it.]
+I turned the unit-1 rubric into issue-scout: two `gh search issues` queries traced to my fit profile (RAG/retrieval/agentic in Python, Spring Boot in Java), ranking filters that drop assigned or stale results and order survivors by comment count, and a rubric that grades the top 5. Two things fell short on the first run: the scout's own subprocess couldn't call `gh` at all (every call got denied for approval), so I ran the searches myself and fed it the results; and the comment-count ranking had no tie-break, so most of the top 5 was arbitrary since nearly everything sat at 0 comments. I fixed the tie-break (most recent first) and found a real rubric gap while grading: a genuinely well-specified issue (`railtracks#1757`) still shouldn't have been accepted, because its own text said to wait for a prerequisite PR that's still open, and none of my five checks caught that. I added a clause for it. The same rubric then correctly rejected both of my own hand-picked issues from the Issue Selection site, each for a currently active competing PR my own read of the issue page would have missed.
 
 **Unit 6: [one line on the tool work]**
 
