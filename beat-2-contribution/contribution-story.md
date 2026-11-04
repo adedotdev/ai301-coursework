@@ -134,26 +134,55 @@ template myself and found no AI policy stated either way.
 
 **Problem Description**
 
-[In your own words, what is broken or missing?]
+LLM08 (vector & embedding weaknesses) has two black-box test dimensions against a RAG
+app: retrieval exposure (does the app leak a confidential canary planted in its
+corpus?) and indirect injection (does the app obey an instruction planted in a
+retrieved document?). A developer testing their own app typically enables both at once
+(`--app-canary` and `--app-rag-poison` together — every doc example shows them this
+way). But the poisoned document is retrieved on almost any query and its instruction
+tells the model to answer with one fixed marker and nothing else, so it answers *every*
+probe — including the canary probes that were never asking about it. The canary never
+gets a chance to leak on its own terms.
 
 **Expected Behavior**
 
-[What should happen?]
+In one scan with both markers set, a canary probe should be able to show a genuine
+retrieval-exposure finding when the app actually leaks the canary, independently of
+whatever the injection probes find.
 
 **Current Behavior**
 
-[What actually happens?]
+Issue #12's earlier fix already stops the canary probe from misreading a poisoned
+reply as a clean pass — it now reads `errored` (inconclusive) instead of a false
+`withstood`. But that's the ceiling: the canary probe can never do better than
+inconclusive while the poisoned document answers every query, so it can never actually
+confirm or refute a real leak. Confirmed with the repo's own measurement
+(`docs/owasp/llm08.md`): 13 of 16 real applications obeyed the poison on every probe,
+and only one ever showed the retrieval dimension firing on its own.
 
 **Affected Components**
 
-[Which parts of the codebase are involved?]
+`src/llmsectest/probes/application.py` (`_llm08_cases`, `app_cases`) builds the six
+LLM08 cases but isn't itself at fault — it already wires `confounded_by` correctly.
+The real gap is in the **test fixture**: every existing LLM08 test
+(`tests/test_confounded_retrieval_probes.py`, `tests/test_llm08_suite.py`) uses one
+mock adapter that gives the same fixed reply to every query, which has no way to model
+a retriever that would actually return different documents for different queries. No
+scanning or detector code needs to change (`probes/application.py`,
+`probes/detectors.py`, `probes/runner.py` all stay as they are).
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: Claude Code, used to trace `_llm08_cases`, the LLM08 test suite, and
+  `docs/owasp/llm08.md`'s measurement section, and to confirm the issue's own
+  "where to look" pointer (`probes/corpus.py`) names a file that ships no LLM08 cases
+  at all
+- What it produced: the finding above, that the fix belongs in the test fixture, not
+  the scanner
+- Difficulties: the issue's stated evidence location was wrong twice over (wrong file,
+  and a fixture that doesn't exist in the repo at all); had to read the actual source
+  and the maintainer's own measurement docs instead of trusting the issue text
+- What changed: nothing in a skill; this was direct code reading
 
 ---
 
@@ -236,29 +265,79 @@ it means reproducing it the way the existing regression suite already does:
 
 **Analysis**
 
-[Your analysis of the root cause: what is causing the issue, traced
-to the files and functions involved.]
+Root cause: every existing LLM08 test shares one mock adapter
+(`_AnsweringAdapter` in `tests/test_confounded_retrieval_probes.py`) that gives the
+exact same fixed reply to every probe, regardless of what the probe actually asked.
+That's a faithful stand-in for a poisoned document that dominates retrieval, but it
+has no way to express a document store where a canary-targeted query and an
+injection-targeted query retrieve *different* documents — which is what a real vector
+store with topically distinct documents and a bounded `top_k` would do. Because the
+fixture can't model that, no test in the repo can show both LLM08 dimensions firing
+genuinely in the same run, which is exactly the gap issue #38 describes. The issue
+names three possible routes (soften the poison's phrasing, give it a distinct topic
+and limited `top_k`, or split the fixtures); of the three, only the topic/`top_k` route
+is something this repo's own code can actually demonstrate — routes 1 and 2's other
+half (the poisoned document's literal wording) and route 3 (splitting into separate
+scans) both live on the external target app's side, which this black-box tool never
+controls.
 
 **Proposed Solution**
 
-[High-level description of your fix approach, and what you are
-deliberately NOT changing.]
+Add a new test fixture, `_TopicRoutedAdapter`, that holds two documents on distinct
+topics (matching the two attack families' own existing wording: every retrieval-probe
+prompt asks about something "confidential," every injection-probe prompt asks about an
+"instruction") and answers each query from whichever single document actually matches
+it — a top-1 retriever, in miniature. A new test
+(`tests/test_llm08_fixture_design.py`) runs the real six `_llm08_cases` cases against
+it and asserts that both dimensions fire genuinely in the same run. A second test in
+the same file pins the contrast: the existing single-reply fixture still fully masks
+retrieval exposure, so the new fixture's result isn't a scanner change in disguise.
+I'm deliberately NOT touching `probes/application.py`, `probes/detectors.py`, or
+`probes/runner.py` — the scoring logic already does the right thing with what it's
+given; the gap was only ever in what the test fixtures gave it. I'm also not changing
+the real-world `--app-canary`/`--app-rag-poison` CLI flags or docs in this PR scope;
+if `docs/owasp/llm08.md` should also recommend topic separation and a bounded `top_k`
+to real users, that's a follow-up, not required for this issue's own "done" bar.
 
 **Implementation Plan**
 
-1. [Modify file X to do Y]
-2. [Add or change Z]
-3. [Update tests]
+1. Add `_TopicRoutedAdapter` and the two new tests to a new file,
+   `tests/test_llm08_fixture_design.py`.
+2. Build the six cases through the real `app_cases()` entry point (not hand-rolled
+   case objects), so the test exercises the same code a real scan runs.
+3. Run `ruff check` and the full suite; confirm the 4 pre-existing Windows-only
+   failures are unchanged and nothing else regresses.
+4. Add a `CHANGELOG.md` bullet under `[Unreleased]`.
 
-[Record deviations here as they happen: what changed mid-build and
-why. A recorded deviation is honest work; silent drift is not.]
+No deviations yet — built and verified locally (both new tests pass, full suite shows
+the same 4 pre-existing failures as before, `ruff check` clean) before writing this up.
+
+**Risk / open question:** I asked in my claim comment which of the three routes the
+maintainer prefers and haven't had a reply yet. This plan goes ahead with the
+topic/`top_k` route rather than waiting, since it's the only one this repo's own code
+can actually implement and demonstrate. If the maintainer answers before this merges
+and prefers a different route, I'll treat that as new direction and revise.
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: Claude Code, used to design and write `_TopicRoutedAdapter` and the two tests,
+  run `ruff`/`pytest`/`coverage` locally to verify before writing the plan, and
+  plan-check to grade `plan.md` and `plan-comment.md` before treating the plan as
+  ready to build from
+- What it produced: an accept verdict on all 6 required checks, and, on the first
+  grading pass of the plan comment, two voice-guard stops (a two-thought sentence, and
+  a promised date that collided with my own "never promise a date" rule) that caught
+  real drafting mistakes before anything was posted
+- Difficulties: picking keywords for the two mock documents that didn't accidentally
+  collide between the two attack families' prompt wording (an earlier draft keyword,
+  "internal," appears in both families' prompts and would have made the fixture
+  non-deterministic); settled on "confidential" and "instruction," each unique to one
+  family. Separately, plan-check's own instructions assume a posted repro comment on
+  the thread, but this unit's wild-scope rule says never to post one — I used the local
+  `repro-draft.md` as the repro-evidence source instead and said so in the grading
+- What changed: the keyword choice, before anything was committed; the plan comment,
+  twice, to clear the voice guard; and the plan itself, to name the open
+  maintainer-preference question honestly instead of assuming my choice is final
 
 ---
 
