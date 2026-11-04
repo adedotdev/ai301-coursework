@@ -343,39 +343,51 @@ and prefers a different route, I'll treat that as new direction and revise.
 
 ## Testing Strategy
 
-[What observable checks prove the fix: your reproduction steps re-run
-against the built change (before and after), and the repo's own test
-suite or checks with the outcome shown. "Tests pass" with nothing
-observable named is not a strategy.]
+Re-ran my Unit 6 reproduction script on a clean `main` checkout first, to confirm the
+masking is still there before touching anything: the canary probe comes back `errored`
+(inconclusive), the injection probe comes back `vulnerable: True`. Then on the fix
+branch, ran the two new tests in `tests/test_llm08_fixture_design.py`: the first
+asserts both a genuine retrieval-exposure finding and a genuine injection finding fire
+in the same run against the new topic-routed fixture, with the retrieval probe never
+`errored`; the second confirms the old single-reply fixture still fully masks
+retrieval exposure, so the result is the fixture, not a scanner change. Both passed.
+Ran the project's own manifest checks on the branch: `ruff check src tests examples`
+clean, and `coverage run -m pytest -q` at 1053 passed with the same 4 pre-existing
+Windows-only failures as `main` (1051 passed there, since the 2 new tests don't exist
+on `main`). Full output is in `test_evidence.md`.
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: Claude Code, to run the reproduction on `main`, the new tests and the full
+  suite on the branch, and to write up the before/after comparison
+- What it produced: `test_evidence.md`, with before-fix, after-fix, and manifest-check
+  output
+- Difficulties: none met
+- What changed: nothing; the plan's test plan held up exactly as written
 
 ---
 
 ## Implementation Notes
 
-[A running log, added to as you work. Date each entry. What you
-built, decisions you made when you made them, wrong turns included.]
+**2026-11-03**
 
-**[Date]**
-
-[Entry]
-
-**[Date]**
-
-[Entry]
+Built `_TopicRoutedAdapter` and the two tests in `tests/test_llm08_fixture_design.py`,
+on branch `fix/38-llm08-topic-routed-fixture`. First keyword choice ("internal" for the
+canary topic) turned out to appear in one of the injection-probe prompts too, which
+would have made the fixture's routing nondeterministic between the two dimensions on
+that one probe. Caught it by actually reading all six attack prompts side by side
+before picking keywords, not by running the test and seeing it flake. Switched to
+"confidential" (canary) and "instruction" (poison), each unique to its own attack
+family's wording. Ran `ruff check` and the full suite on the branch: both new tests
+pass, same 4 pre-existing Windows-only failures as `main`, nothing else changed.
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: Claude Code, for the implementation and the verification runs
+- What it produced: the fix, built and green on its own branch before the plan was
+  even graded
+- Difficulties: the keyword collision above
+- What changed: the keyword choice, caught before the first test run rather than after
 
 ---
 
