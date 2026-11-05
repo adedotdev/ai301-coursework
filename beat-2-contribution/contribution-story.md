@@ -437,25 +437,22 @@ manifest-check output, and an AI disclosure.
 
 **Technical Skills Gained**
 
-[What you learned technically, named concretely.]
+I learned to verify an issue's own pointers against the actual code before trusting them. This issue named `probes/corpus.py` as the place to look, but the real LLM08 cases live in `_llm08_cases()` in `probes/application.py`; `corpus.py` only documents LLM08, it ships no cases. The issue also implied the poisoned document is a fixture in this repo, but it's something a RAG app owner plants in their own corpus. I only caught both by reading the actual source instead of taking the issue's claims as fact. I also learned to design a black-box test fixture around a real constraint: `_TopicRoutedAdapter` models a bounded `top_k` vector store with two distinct topics, so both LLM08 dimensions can fire genuinely in one run, without touching any scanner or detector code. And I picked up a concrete CI gotcha: this repo is a `pytest11` plugin, so `pytest --cov` measures ~24 points low because pytest imports the plugin before `pytest-cov` starts counting; the right invocation is `coverage run -m pytest` instead.
 
 **Challenges Overcome**
 
-[What was hard and how you solved it; point at the real events, the
-Toolkit blocks above are full of them.]
+The voice-guard caught real gaps in my own rules, not just typos. My first claim-comment draft tripped a "one question, with what I already tried" rule that was too narrow for a pre-work design question grounded in the issue's own text, so I rewrote the rule itself, by hand, since Claude Code's self-modification safety check blocks editing a skill's own files outright. Posting the claim comment hit a second, unrelated wall: running `gh` through a permission-bypassed subprocess tripped a different safety block, so I posted from my own interactive session instead of automating around it. In unit 7, the ship-gate's manifest taught me that an "Excluded, with a dated reason" table only documents a known failure for `pr-precheck` to read; it does not make the failing command exit 0, so I had to add `--deselect` flags for the 4 pre-existing Windows failures directly into the manifest's own test command. And the gate's 30-minute PASS window had quietly expired overnight between unit 7 and the actual push, so I re-ran it fresh right before opening the PR instead of trusting a stale PASS.
 
 **What I'd Do Differently Next Time**
 
-[Reflection on your process.]
+I'd read the target repo's CI config and CONTRIBUTING.md in full before writing the ship-manifest, instead of discovering the exclusion-table's exact semantics by hitting a BLOCK first. I'd also verify an issue's named file locations as the very first step on any future issue, since that single check this time surfaced both the wrong pointer and the wrong assumption about where the poisoned document lives, and everything else followed from getting that right early.
 
 ---
 
 ## Resources Used
 
-[What actually helped, not a reading list. List things this story
-already shows you using: the doc you followed to set the environment
-up, the thread that explained the bug, the person who answered you.
-One real entry beats ten plausible ones.]
-
-- [Link to documentation that helped]
-- [Discussion, issue, or post that helped]
+- `llmsectest`'s `CONTRIBUTING.md`: setup command, the exact CI sequence (`ruff check` then `coverage run -m pytest` then `coverage report`), and the warning against `pytest --cov`
+- `llmsectest`'s `docs/guides/development.md`: explained why `pytest --cov` undercounts on this repo specifically (the `pytest11` plugin import-order issue)
+- `llmsectest`'s `docs/owasp/llm08.md`: the maintainer's own 16-app measurement writeup that the issue's masking claim is based on, which told me what "genuine co-firing" should actually look like
+- `tests/test_confounded_retrieval_probes.py` in the repo itself: the existing mock-adapter test pattern I reused to build `_TopicRoutedAdapter`
+- Issue https://github.com/wehnsdaefflae/llmsectest/issues/38 and PR https://github.com/wehnsdaefflae/llmsectest/pull/41 themselves, read start to end more than once each
