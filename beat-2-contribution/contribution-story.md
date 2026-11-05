@@ -11,7 +11,7 @@ files and no evidence uploads are part of Assignment 5.
 **Student:** Dami Adenuga
 **GitHub Username:** adedotdev
 **Issue:** https://github.com/wehnsdaefflae/llmsectest/issues/38
-**Pull Request:** [GitHub PR link, once opened]
+**Pull Request:** https://github.com/wehnsdaefflae/llmsectest/pull/41
 
 One repository, built across units 5 to 8, telling the whole story of your real
 contribution. Fill it as you work, not at the end — the sections below ask for evidence that
@@ -74,10 +74,9 @@ through a permission-bypassed subprocess tripped a different safety block
 (`[Create Unsafe Agents]`), so I posted the verified comment from my own interactive session
 instead of automating around it.
 
-**Unit 7: [one line on the tool work]**
+**Unit 7: Installed the ship-gate, then learned a manifest's exceptions table doesn't excuse a failing exit code**
 
-[2-4 sentences: the ship-gate and your gate manifest. What it produced
-on your real branch, what fought you, what changed because of it.]
+I installed the ship-gate (a second `PreToolUse` hook that runs the target repo's own manifest checks, then my `pr-precheck` rubric, before `gh pr create` goes through) and wrote `ship-manifest.md` for `llmsectest` from its own CONTRIBUTING.md. The first real run blocked on the "Tests + coverage" check: 4 tests failed, all pre-existing Windows path and permission-bit mismatches, unrelated to my fix. I'd listed them in the manifest's "Excluded" table, but that table only documents a known failure for `pr-precheck` to read; it doesn't make the command itself exit 0. I fixed it by adding `--deselect` flags for those 4 tests directly into the manifest's own test command, confirmed `1053 passed, 4 deselected` locally, and the gate passed clean on the next run. The voice-guard also caught real problems in my plan comment and PR draft across several rounds: comma-joined sentences carrying two thoughts, and once a promised PR date that violated my own "never a timeline" rule, which I replaced with a past-tense statement of what I'd already built instead of a promise about what I'd do.
 
 **Unit 8: [one line on the tool work]**
 
@@ -393,27 +392,44 @@ pass, same 4 pre-existing Windows-only failures as `main`, nothing else changed.
 
 ## Pull Request
 
-**PR Link:** [GitHub PR URL when opened]
+**PR Link:** https://github.com/wehnsdaefflae/llmsectest/pull/41
 
-**PR Description:** [what the PR says; much of the content above
-adapts into it]
+**PR Description:** Explains that every existing LLM08 test shares one mock
+adapter with a single fixed reply, so a poisoned document always crowds out
+the canary and the retrieval-exposure probe can never confirm a real leak in
+the same run an injection probe fires. Adds `_TopicRoutedAdapter`, which holds
+two documents on distinct topics and routes each query to whichever one it
+matches, the way a real vector store with a bounded `top_k` would. One new
+test runs the real six LLM08 cases against it and shows both dimensions
+firing genuinely in the same run; a second pins the old single-reply
+fixture's masking as a contrast, to show this is a fixture change, not a
+scanner change. States which of the issue's three named fix routes I took and
+why (the only one this repo's own tests can demonstrate, since the other two
+change the poisoned document's content, which lives on the target app's
+side), and that I'd asked the maintainer which route they preferred in my
+claim comment with no reply yet. Includes before/after repro output, the full
+manifest-check output, and an AI disclosure.
 
 **Maintainer Feedback:**
 
-- [Date]: [feedback received, or "none yet"; silence is a normal
-  state and costs you nothing]
-- [Date]: [how you addressed it]
+- 2026-11-04: none yet, PR just opened
 
-**Status:** [Awaiting review / Iterating / Merged / Closed. The
-status is a fact you record, never a grade: the PR is graded as
-opened.]
+**Status:** Awaiting review
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: the ship-gate (`PreToolUse` hook running the repo's manifest checks
+  plus `pr-precheck`), run through Claude Code against the real branch before
+  `gh pr create`
+- What it produced: a PASS covering all 3 manifest checks and all 4
+  `pr-precheck` checks (plan-fidelity, test-evidence, diff-quality,
+  standards-comms), which is what let the PR open
+- Difficulties: the first PASS was from the day before I actually pushed, and
+  the gate's 30-minute PASS window had long expired by the time I was ready
+  to open the PR
+- What changed: re-ran the gate fresh immediately before opening the PR
+  instead of reusing the stale PASS, and got a clean PASS again with the same
+  branch and drafts
 
 ---
 
