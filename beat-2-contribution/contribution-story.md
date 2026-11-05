@@ -78,10 +78,9 @@ instead of automating around it.
 
 I installed the ship-gate (a second `PreToolUse` hook that runs the target repo's own manifest checks, then my `pr-precheck` rubric, before `gh pr create` goes through) and wrote `ship-manifest.md` for `llmsectest` from its own CONTRIBUTING.md. The first real run blocked on the "Tests + coverage" check: 4 tests failed, all pre-existing Windows path and permission-bit mismatches, unrelated to my fix. I'd listed them in the manifest's "Excluded" table, but that table only documents a known failure for `pr-precheck` to read; it doesn't make the command itself exit 0. I fixed it by adding `--deselect` flags for those 4 tests directly into the manifest's own test command, confirmed `1053 passed, 4 deselected` locally, and the gate passed clean on the next run. The voice-guard also caught real problems in my plan comment and PR draft across several rounds: comma-joined sentences carrying two thoughts, and once a promised PR date that violated my own "never a timeline" rule, which I replaced with a past-tense statement of what I'd already built instead of a promise about what I'd do.
 
-**Unit 8: [one line on the tool work]**
+**Unit 8: Ran the PR monitor on an already-merged PR, and it picked the right form on its own**
 
-[2-4 sentences: the PR-monitor and your playbook. What it read, what it
-drafted, what you did with the draft.]
+I wrote my playbook's four sections from real data: I checked 5 recent merged PRs from outside contributors and found the maintainer merges within about a day, often with zero comments first, so I set a 4-day nudge threshold a few days past that. By the time I ran `--state`, the maintainer had already merged my PR directly with no review comments, so the monitor correctly skipped straight to the "merged follow-up" form instead of a review response. The one thing that fell short: its draft left "if #38 didn't close automatically" as a conditional, because it couldn't see the issue's own state. I checked that myself, found #38 had closed automatically from the Fixes line, and rewrote that line as a fact. Posting it still took 3 rounds through the voice guard: a comma-joined sentence, a fact restated in two sentences, and a "not X, but Y" contrast pair, each fixed the same way as in unit 6 and 7.
 
 ---
 
@@ -412,9 +411,10 @@ manifest-check output, and an AI disclosure.
 
 **Maintainer Feedback:**
 
-- 2026-11-04: none yet, PR just opened
+- 2026-11-05: Mark (the maintainer) merged the PR directly, with no review comments. Issue #38 closed automatically from the Fixes line.
+- 2026-11-05: I posted a merged-follow-up comment thanking him for merging quickly and for taking my route without a reply from me on which he preferred. I named the issue's other two routes as a possible follow-up issue, without volunteering for the work.
 
-**Status:** Awaiting review
+**Status:** Merged
 
 **Toolkit**
 
